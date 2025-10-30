@@ -1,12 +1,16 @@
 import json
 import subprocess
+import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import List
+from typing import Dict, List
+from urllib import error as urlerror
+from urllib import request as urlrequest
 
 from flask import Flask, flash, redirect, render_template, request, url_for
 
 DATA_PATH = Path("/var/lib/nginx-manager/push_sources.json")
 CONF_PATH = Path("/etc/nginx/conf.d/rtmp_pushes.conf")
+STAT_ENDPOINT = "http://127.0.0.1:8080/rtmp_stat"
 
 
 def _ensure_storage() -> None:
@@ -42,6 +46,87 @@ def persist_sources(sources: List[str]) -> None:
         DATA_PATH.write_text(previous_data, encoding="utf-8")
         CONF_PATH.write_text(previous_conf, encoding="utf-8")
         raise RuntimeError("重新加载 Nginx 失败，请检查配置。") from exc
+
+
+def safe_int(value: str, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def safe_float(value: str, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def format_duration(seconds: int) -> str:
+    total = max(0, seconds)
+    days, remainder = divmod(total, 86400)
+    hours, remainder = divmod(remainder, 3600)
+    minutes, secs = divmod(remainder, 60)
+    parts: List[str] = []
+    if days:
+        parts.append(f"{days}d")
+    if hours or parts:
+        parts.append(f"{hours}h")
+    if minutes or parts:
+        parts.append(f"{minutes}m")
+    parts.append(f"{secs}s")
+    return " ".join(parts)
+
+
+def fetch_rtmp_stats() -> Dict[str, object]:
+    try:
+        with urlrequest.urlopen(STAT_ENDPOINT, timeout=3) as response:
+            payload = response.read()
+    except urlerror.URLError as exc:
+        raise RuntimeError("无法获取 Nginx RTMP 状态，请确认服务已启动。") from exc
+
+    try:
+        root = ET.fromstring(payload)
+    except ET.ParseError as exc:
+        raise RuntimeError("Nginx RTMP 状态数据格式不正确。") from exc
+
+    server_node = root.find("server")
+    if server_node is None:
+        return {"uptime": "0s", "nclients": 0, "streams_total": 0, "applications": []}
+
+    uptime = format_duration(safe_int(server_node.findtext("uptime")))
+    nclients = safe_int(server_node.findtext("nclients"))
+
+    applications: List[Dict[str, object]] = []
+    streams_total = 0
+
+    for app in server_node.findall("application"):
+        app_name = app.findtext("name") or "default"
+        live = app.find("live")
+        stream_rows: List[Dict[str, object]] = []
+        if live is not None:
+            for stream in live.findall("stream"):
+                stream_rows.append(
+                    {
+                        "app": app_name,
+                        "name": stream.findtext("name") or "unnamed",
+                        "time": format_duration(safe_int(stream.findtext("time"))),
+                        "clients": safe_int(stream.findtext("nclients")),
+                        "bw_in": safe_float(stream.findtext("bw_in")),
+                        "bw_out": safe_float(stream.findtext("bw_out")),
+                        "bytes_in": safe_float(stream.findtext("bytes_in")),
+                        "bytes_out": safe_float(stream.findtext("bytes_out")),
+                    }
+                )
+        streams_total += len(stream_rows)
+        applications.append({"name": app_name, "streams": stream_rows})
+
+    return {
+        "uptime": uptime,
+        "nclients": nclients,
+        "streams_total": streams_total,
+        "applications": applications,
+    }
 
 
 def normalise_url(url: str) -> str:
@@ -108,6 +193,17 @@ def delete_source():
 @app.route("/api/sources", methods=["GET"])
 def api_sources():
     return {"sources": load_sources()}
+
+
+@app.route("/stat", methods=["GET"])
+def stat_view():
+    error = None
+    stats = None
+    try:
+        stats = fetch_rtmp_stats()
+    except RuntimeError as exc:
+        error = str(exc)
+    return render_template("stat.html", stats=stats, error=error)
 
 
 if __name__ == "__main__":

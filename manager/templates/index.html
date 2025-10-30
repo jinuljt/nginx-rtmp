@@ -20,6 +20,10 @@
   </head>
   <body>
     <h1>RTMP 推送源管理</h1>
+    <nav style="margin-bottom: 1rem;">
+      <a href="{{ url_for('index') }}">推送管理</a> |
+      <a href="{{ url_for('stat_view') }}">RTMP 状态</a>
+    </nav>
     <p>新增或删除推送地址后，服务会自动重载 Nginx 配置。</p>
 
     {% with messages = get_flashed_messages(with_categories=true) %}

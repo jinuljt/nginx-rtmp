@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <title>RTMP 状态监控</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 2rem; max-width: 960px; }
+      h1 { margin-bottom: 0.5rem; }
+      nav { margin-bottom: 1rem; }
+      a { color: #0d47a1; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .summary { display: flex; gap: 1.5rem; font-size: 0.95rem; margin-bottom: 1rem; }
+      .card { border: 1px solid #ddd; border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { border: 1px solid #eee; padding: 0.5rem; text-align: left; font-size: 0.92rem; }
+      th { background-color: #f5f5f5; font-weight: 600; }
+      .empty { color: #666; font-style: italic; }
+      .flash { padding: 0.6rem; margin-bottom: 0.75rem; border-radius: 4px; }
+      .flash.error { background-color: #fdecea; color: #b71c1c; }
+    </style>
+  </head>
+  <body>
+    <h1>RTMP 状态监控</h1>
+    <nav>
+      <a href="{{ url_for('index') }}">推送管理</a> |
+      <a href="{{ url_for('stat_view') }}">RTMP 状态</a>
+    </nav>
+
+    {% if error %}
+      <div class="flash error">{{ error }}</div>
+    {% endif %}
+
+    {% if stats %}
+      <div class="summary">
+        <div><strong>运行时长：</strong>{{ stats.uptime }}</div>
+        <div><strong>在线客户端：</strong>{{ stats.nclients }}</div>
+        <div><strong>推流数量：</strong>{{ stats.streams_total }}</div>
+      </div>
+
+      {% for app in stats.applications %}
+        <div class="card">
+          <h2>应用：{{ app.name }}</h2>
+          {% if app.streams %}
+            <table>
+              <thead>
+                <tr>
+                  <th>流名称</th>
+                  <th>在线客户端</th>
+                  <th>运行时长</th>
+                  <th>入口带宽 (kb/s)</th>
+                  <th>出口带宽 (kb/s)</th>
+                  <th>入口流量 (MB)</th>
+                  <th>出口流量 (MB)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for stream in app.streams %}
+                  <tr>
+                    <td>{{ stream.name }}</td>
+                    <td>{{ stream.clients }}</td>
+                    <td>{{ stream.time }}</td>
+                    <td>{{ (stream.bw_in / 1024)|round(1) }}</td>
+                    <td>{{ (stream.bw_out / 1024)|round(1) }}</td>
+                    <td>{{ (stream.bytes_in / (1024 * 1024))|round(2) }}</td>
+                    <td>{{ (stream.bytes_out / (1024 * 1024))|round(2) }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <p class="empty">暂无活跃流。</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% elif not error %}
+      <p class="empty">暂无状态数据。</p>
+    {% endif %}
+  </body>
+</html>

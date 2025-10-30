@@ -94,6 +94,6 @@ RUN python3 -m venv /opt/rtmp-manager/.venv && \
         Flask==3.0.3 \
         gunicorn==21.2.0
 
-EXPOSE 1935 8080 5000
+EXPOSE 1935 5000
 
 CMD ["supervisord", "-c", "/etc/supervisord.conf"]

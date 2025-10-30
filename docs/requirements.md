@@ -13,7 +13,8 @@
    - 基于最新稳定的 Alpine Linux 与 Nginx（当前目标：Alpine 3.20，Nginx 1.26.x）。  
    - 编译集成 `nginx-rtmp-module`，默认启用 `app` 应用，监听 `1935` 端口。  
 2. **状态与监控**  
-   - 暴露 HTTP 状态页 `http://<host>:8080/stat`，用于实时查看推流状态。  
+   - 通过 Flask 控制台集成状态页 `http://<host>:5000/stat`，展示在线客户端、带宽与累计流量。  
+   - Nginx 内部监听 `127.0.0.1:8080/rtmp_stat` 提供原始 XML 数据，对外无需开放额外端口。  
 3. **推送源管理**  
    - 内置 Flask Web 服务（默认端口 5000），支持列出、添加、删除 RTMP/RTMPS 推送地址。  
    - 所有推送地址写入 `/etc/nginx/conf.d/rtmp_pushes.conf`，变更后自动执行 `nginx -s reload`。  
