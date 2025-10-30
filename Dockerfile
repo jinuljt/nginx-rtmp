@@ -1,80 +1,99 @@
-# Versions of nginx, rtmp-module and ffmpeg 
-ARG ALPINE_VERSION=3.14
+ARG ALPINE_VERSION=3.20
 
-##### Building stage #####
-FROM alpine:${ALPINE_VERSION} as builder
-MAINTAINER 7YHong <https://blog.qiyanghong.cn>
+##### Build nginx with RTMP support #####
+FROM alpine:${ALPINE_VERSION} AS builder
+LABEL maintainer="7YHong <https://blog.qiyanghong.cn>"
 
-ARG NGINX_VERSION=1.21.1
+ARG NGINX_VERSION=1.26.2
 ARG NGINX_RTMP_MODULE_VERSION=1.2.2
 
-# Install dependencies
-RUN apk update	&& \
-	apk --no-cache add \
-		bash build-base ca-certificates \
-		openssl openssl-dev make \
-		gcc libgcc libc-dev rtmpdump-dev \
-		zlib-dev musl-dev pcre pcre-dev lame-dev \
-		yasm pkgconf pkgconfig libtheora-dev \
-		libvorbis-dev libvpx-dev freetype-dev && \
-    rm -rf /var/lib/apt/lists/*	
-	
-# Download nginx source
-RUN mkdir -p /tmp/build && \
-	cd /tmp/build && \
-	wget https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz && \
-	tar zxf nginx-${NGINX_VERSION}.tar.gz && \
-	rm nginx-${NGINX_VERSION}.tar.gz
+RUN apk add --no-cache \
+        bash \
+        build-base \
+        ca-certificates \
+        freetype-dev \
+        gcc \
+        lame-dev \
+        libgcc \
+        libc-dev \
+        libtheora-dev \
+        libvorbis-dev \
+        libvpx-dev \
+        linux-headers \
+        make \
+        musl-dev \
+        openssl \
+        openssl-dev \
+        pcre \
+        pcre-dev \
+        pkgconf \
+        rtmpdump-dev \
+        wget \
+        yasm \
+        zlib-dev
 
-# Download rtmp-module source
+RUN mkdir -p /tmp/build && \
+    cd /tmp/build && \
+    wget -q https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz && \
+    tar zxf nginx-${NGINX_VERSION}.tar.gz
+
 RUN cd /tmp/build && \
-    wget https://github.com/arut/nginx-rtmp-module/archive/v${NGINX_RTMP_MODULE_VERSION}.tar.gz && \
-    tar zxf v${NGINX_RTMP_MODULE_VERSION}.tar.gz && \
-	rm v${NGINX_RTMP_MODULE_VERSION}.tar.gz
-	
-# Build nginx with nginx-rtmp module
+    wget -q -O nginx-rtmp-module.tar.gz https://github.com/arut/nginx-rtmp-module/archive/refs/tags/v${NGINX_RTMP_MODULE_VERSION}.tar.gz && \
+    tar zxf nginx-rtmp-module.tar.gz
+
 RUN cd /tmp/build/nginx-${NGINX_VERSION} && \
     ./configure \
         --sbin-path=/usr/local/sbin/nginx \
         --conf-path=/etc/nginx/nginx.conf \
         --error-log-path=/var/log/nginx/error.log \
-        --http-log-path=/var/log/nginx/access.log \		
+        --http-log-path=/var/log/nginx/access.log \
         --pid-path=/var/run/nginx/nginx.pid \
         --lock-path=/var/lock/nginx.lock \
         --http-client-body-temp-path=/tmp/nginx-client-body \
         --with-http_ssl_module \
         --with-threads \
         --add-module=/tmp/build/nginx-rtmp-module-${NGINX_RTMP_MODULE_VERSION} && \
-    make CFLAGS=-Wno-error -j $(getconf _NPROCESSORS_ONLN) && \
+    make CFLAGS=-Wno-error -j "$(getconf _NPROCESSORS_ONLN)" && \
     make install
-	
-# Copy stats.xsl file to nginx html directory and clean build files
-RUN cp /tmp/build/nginx-rtmp-module-${NGINX_RTMP_MODULE_VERSION}/stat.xsl /usr/local/nginx/html/stat.xsl && \
-	rm -rf /tmp/build
 
-##### Building the final image #####
+RUN cp /tmp/build/nginx-rtmp-module-${NGINX_RTMP_MODULE_VERSION}/stat.xsl /usr/local/nginx/html/stat.xsl && \
+    rm -rf /tmp/build
+
+##### Runtime image with Flask manager #####
 FROM alpine:${ALPINE_VERSION}
 
-# Install dependencies
-RUN apk update	&& \
-	apk --no-cache add pcre && \
-    rm -rf /var/lib/apt/lists/*
+ENV PATH="/opt/rtmp-manager/.venv/bin:/usr/local/sbin:${PATH}"
 
-# Copy files from build stage to final stage		
+RUN apk add --no-cache \
+        bash \
+        pcre \
+        python3 \
+        py3-pip \
+        supervisor
+
 COPY --from=builder /usr/local /usr/local
 COPY --from=builder /etc/nginx /etc/nginx
 COPY --from=builder /var/log/nginx /var/log/nginx
 COPY --from=builder /var/lock /var/lock
 COPY --from=builder /var/run/nginx /var/run/nginx
 
-# Forward logs to Docker
 RUN ln -sf /dev/stdout /var/log/nginx/access.log && \
     ln -sf /dev/stderr /var/log/nginx/error.log
 
-# Copy  nginx config file to container
 COPY nginx.conf /etc/nginx/nginx.conf
+COPY nginx.d/rtmp_pushes.conf /etc/nginx/conf.d/rtmp_pushes.conf
 
-EXPOSE 1935
-EXPOSE 8080
+RUN mkdir -p /opt/rtmp-manager /var/lib/nginx-manager && \
+    chmod 755 /opt/rtmp-manager
 
-CMD ["nginx", "-g", "daemon off;"]
+COPY manager/ /opt/rtmp-manager/
+COPY supervisord.conf /etc/supervisord.conf
+
+RUN python3 -m venv /opt/rtmp-manager/.venv && \
+    /opt/rtmp-manager/.venv/bin/pip install --no-cache-dir \
+        Flask==3.0.3 \
+        gunicorn==21.2.0
+
+EXPOSE 1935 8080 5000
+
+CMD ["supervisord", "-c", "/etc/supervisord.conf"]

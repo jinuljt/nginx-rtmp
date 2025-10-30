@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <title>RTMP 推送源管理</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 2rem; max-width: 720px; }
+      h1 { margin-bottom: 0.5rem; }
+      form { margin-bottom: 1.5rem; }
+      input[type="text"] { width: 100%; padding: 0.5rem; margin-top: 0.25rem; }
+      button { padding: 0.4rem 0.8rem; margin-top: 0.5rem; }
+      ul { list-style: none; padding-left: 0; }
+      li { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid #ddd; }
+      .flash { padding: 0.6rem; margin-bottom: 0.75rem; border-radius: 4px; }
+      .flash.error { background-color: #fdecea; color: #b71c1c; }
+      .flash.success { background-color: #e6f4ea; color: #1b5e20; }
+      .flash.info { background-color: #e3f2fd; color: #0d47a1; }
+      .empty { color: #666; font-style: italic; }
+    </style>
+  </head>
+  <body>
+    <h1>RTMP 推送源管理</h1>
+    <p>新增或删除推送地址后，服务会自动重载 Nginx 配置。</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <section>
+      <form action="{{ url_for('add_source') }}" method="post">
+        <label for="push_url">推送地址（例如 rtmp://live-push.example.com/live/stream_key）</label>
+        <input id="push_url" name="push_url" type="text" placeholder="rtmp://..." required>
+        <button type="submit">新增推送源</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>当前推送源</h2>
+      {% if sources %}
+        <ul>
+          {% for item in sources %}
+            <li>
+              <span>{{ item }}</span>
+              <form action="{{ url_for('delete_source') }}" method="post" style="margin:0;">
+                <input type="hidden" name="push_url" value="{{ item }}">
+                <button type="submit">删除</button>
+              </form>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty">暂无推送源。</p>
+      {% endif %}
+    </section>
+  </body>
+</html>
