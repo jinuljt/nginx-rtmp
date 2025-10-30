@@ -6,7 +6,8 @@
 - `manager/` hosts the Flask UI (`app.py`, `templates/`) and is copied to `/opt/rtmp-manager`; keep web assets lightweight and dependency-free.
 - `nginx.d/rtmp_pushes.conf` is a placeholder shipped in the image—avoid manual edits, rely on the manager instead.
 - `README.md` remains the client-facing guide (Chinese-first); mirror any workflow changes here and append English notes when useful for global users.
-- `docs/requirements.md` tracks product requirements; update it whenever behaviour or scope changes.
+- `docs/requirements.md` tracks product requirements; update it whenever behaviour or scope changes。
+- `.github/workflows/docker-image.yml` 实现 GHCR 镜像构建发布流程；改动构建逻辑、镜像名称或推送策略时务必同步维护。
 - `沟通与流程`: 参见文末流程准则，保持沟通一致性。
 
 ## Build, Test, and Development Commands
@@ -15,6 +16,7 @@
 - `docker exec nginx-rtmp nginx -t` validates `nginx.conf` syntax; expect `syntax is ok`.
 - `curl -s http://localhost:5000/api/sources` quickly confirms the Flask manager is reachable and returning the current push list.
 - `curl -s http://localhost:5000/stat` should render the integrated状态页；若失败可在容器内请求 `http://127.0.0.1:8080/rtmp_stat` 排查。
+- `gh workflow run docker 镜像构建` 可在本地触发手动构建；正式流程由推送 `master` 自动执行。
 
 ## Coding Style & Naming Conventions
 - Keep Dockerfile instructions uppercase with one logical change per layer to minimise cache busts; pin explicit versions (e.g. `ARG NGINX_VERSION=1.26.2`).
