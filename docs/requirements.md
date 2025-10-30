@@ -24,7 +24,7 @@
 5. **容器协程管理**  
    - 使用 Supervisor 管理 Nginx 与 Flask 进程，确保任一进程崩溃后自动重启。
 6. **持续交付**  
-   - 推送至 `master` 分支时自动在 GitHub Actions 中构建并发布多架构 Docker 镜像至 GHCR。
+   - 推送至 `master` 分支时自动在 GitHub Actions 中构建并发布多架构 Docker 镜像至 GHCR（目标仓库：`ghcr.io/jinuljt/nginx-rtmp`，包含 `latest` 标签）。
 
 ## 非功能性需求
 - **可维护性**：Dockerfile 与配置文件使用模块化 `include`，新增推送源无需手动编辑主配置。  

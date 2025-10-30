@@ -1,4 +1,6 @@
 # nginx-rtmp
+
+![Docker 镜像构建](https://github.com/jinuljt/nginx-rtmp/actions/workflows/docker-image.yml/badge.svg)
 开箱即用的 Nginx-RTMP 服务器，内置推送源与状态管理界面。
 
 提供 `x86_64`、`arm64` 平台镜像，PC、服务器、树莓派都能用。
@@ -10,7 +12,8 @@
 - `1.26.2`, `latest`
 
 # Github仓库地址
-镜像 Github 仓库：[https://github.com/jinuljt/nginx-rtmp](https://github.com/jinuljt/nginx-rtmp)
+镜像 Github 仓库：[https://github.com/jinuljt/nginx-rtmp](https://github.com/jinuljt/nginx-rtmp)  
+容器镜像发布：[https://ghcr.io/jinuljt/nginx-rtmp](https://ghcr.io/jinuljt/nginx-rtmp)
 
 # 本镜像的用途
 `Nginx` 是一个高性能的 HTTP 服务器，本镜像集成了 `nginx-rtmp-module` 插件，可配置为直播推流服务器。全新的 Web 控制台支持在线管理推送源，无需手动修改 `nginx.conf`。
@@ -22,10 +25,12 @@
 - 作为直播推流服务器使用，可通过以下命令启用服务：
 
 ```bash
+docker pull ghcr.io/jinuljt/nginx-rtmp:latest
+
 docker run -d --name nginx-rtmp \
   -p 1935:1935 \
   -p 5000:5000 \
-  jinuljt/nginx-rtmp
+  ghcr.io/jinuljt/nginx-rtmp:latest
 ```
 
 浏览器访问 `http://localhost:5000/` 进入管理界面，包含推送源维护与实时状态视图。  
@@ -33,7 +38,7 @@ docker run -d --name nginx-rtmp \
 - 如果只需 RTMP 服务，可仅映射 1935；管理界面未暴露时仍可在容器内部使用 `curl http://127.0.0.1:5000/api/sources` 排查。
 
 ```bash
-docker run -d --name nginx-rtmp -p 1935:1935 jinuljt/nginx-rtmp
+docker run -d --name nginx-rtmp -p 1935:1935 ghcr.io/jinuljt/nginx-rtmp:latest
 ```
 
 ## 管理推送源
@@ -65,7 +70,7 @@ docker run -d --name nginx-rtmp -p 1935:1935 jinuljt/nginx-rtmp
 docker run -d --name nginx-rtmp \
   -p 1935:1935 -p 5000:5000 \
   -v $(pwd)/nginx.conf:/etc/nginx/nginx.conf \
-  jinuljt/nginx-rtmp
+  ghcr.io/jinuljt/nginx-rtmp:latest
 ```
 
 Web 控制台生成的推送列表同样位于 `/etc/nginx/conf.d/rtmp_pushes.conf`，可以在自定义配置中用 `include` 引入，实现自定义与可视化管理混合使用。RTMP 状态数据在容器内通过 `http://127.0.0.1:8080/rtmp_stat` 提供给 Flask 前端，无需额外对外开放端口。

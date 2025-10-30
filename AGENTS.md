@@ -13,6 +13,7 @@
 ## Build, Test, and Development Commands
 - `docker build -t nginx-rtmp:dev .` rebuilds the image locally with the latest sources; rerun whenever the Dockerfile or dependencies change.
 - `docker run --rm -p 1935:1935 -p 5000:5000 nginx-rtmp:dev` launches the stack for manual verification; the RTMP stat feed remains internal on `127.0.0.1:8080`.
+- `docker pull ghcr.io/jinuljt/nginx-rtmp:latest` 验证远端发布镜像；线上推荐统一引用该地址。
 - `docker exec nginx-rtmp nginx -t` validates `nginx.conf` syntax; expect `syntax is ok`.
 - `curl -s http://localhost:5000/api/sources` quickly confirms the Flask manager is reachable and returning the current push list.
 - `curl -s http://localhost:5000/stat` should render the integrated状态页；若失败可在容器内请求 `http://127.0.0.1:8080/rtmp_stat` 排查。
@@ -24,6 +25,7 @@
 - In Flask views, keep logic inside helper functions and bubble user-facing messages via `flash`; avoid external dependencies beyond Flask + Gunicorn.
 - Python依赖通过 `/opt/rtmp-manager/.venv` 虚拟环境安装；别在系统 Python 中追加包。
 - 新增 Flask 路由时，提供模板并在导航中链接；若依赖 Nginx 内部接口，兼顾异常处理与用户提示。
+- GHCR 镜像需要维持 `latest` 标签；修改 workflow 或镜像命名时同步更新 README 示例。
 
 ## 沟通与流程准则
 - 团队沟通与文档更新默认使用中文，保持风格一致。
