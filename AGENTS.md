@@ -7,6 +7,7 @@
 - `nginx.d/rtmp_pushes.conf` is a placeholder shipped in the image—avoid manual edits, rely on the manager instead.
 - `README.md` remains the client-facing guide (Chinese-first); mirror any workflow changes here and append English notes when useful for global users.
 - `docs/requirements.md` tracks product requirements; update it whenever behaviour or scope changes.
+- `沟通与流程`: 参见文末流程准则，保持沟通一致性。
 
 ## Build, Test, and Development Commands
 - `docker build -t nginx-rtmp:dev .` rebuilds the image locally with the latest sources; rerun whenever the Dockerfile or dependencies change.
@@ -21,6 +22,11 @@
 - In Flask views, keep logic inside helper functions and bubble user-facing messages via `flash`; avoid external dependencies beyond Flask + Gunicorn.
 - Python依赖通过 `/opt/rtmp-manager/.venv` 虚拟环境安装；别在系统 Python 中追加包。
 - 新增 Flask 路由时，提供模板并在导航中链接；若依赖 Nginx 内部接口，兼顾异常处理与用户提示。
+
+## 沟通与流程准则
+- 团队沟通与文档更新默认使用中文，保持风格一致。
+- 提交信息（git commit message）必须使用中文描述变更内容。
+- 每次需求或流程调整后，及时同步更新本指南与 `docs/requirements.md`。
 - Comment non-obvious RTMP pushes or auth blocks so downstream operators understand the streaming pipeline.
 
 ## Testing Guidelines
